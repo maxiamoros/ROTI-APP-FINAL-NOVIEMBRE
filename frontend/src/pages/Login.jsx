@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 const AdminLogin = () => {
   const [username, setUsername] = useState('');
@@ -14,65 +15,40 @@ const AdminLogin = () => {
 
   // Si ya está autenticado, redirigir al panel correspondiente
   useEffect(() => {
-    if (token && user) {
-      if (user.rol === 'COCINERO') navigate('/cocina', { replace: true });
-      else if (user.rol === 'CAJERO') navigate('/caja', { replace: true });
-      else if (user.rol === 'TOTEM' || user.rol === 'CLIENTE') navigate('/cliente', { replace: true });
+    const isAuth = localStorage.getItem('isAuthenticated') === 'true';
+    if (isAuth) {
+      if (user?.rol === 'COCINERO') navigate('/cocina', { replace: true });
+      else if (user?.rol === 'CAJERO') navigate('/caja', { replace: true });
+      else if (user?.rol === 'TOTEM' || user?.rol === 'CLIENTE') navigate('/cliente', { replace: true });
       else navigate('/admin', { replace: true });
     }
-  }, [token, user, navigate]);
+  }, [user, navigate]);
 
-  const handleLogin = async (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    try {
-      // Petición a la Serverless Function de Vercel en /api/login
-      console.log(`[LOGIN FETCH] POST /api/login con usuario: "${username}"`);
+    const cleanUser = username.trim();
 
-      const response = await fetch(`/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      // Console.log de la respuesta cruda para diagnóstico
-      console.log('[LOGIN RAW RESPONSE]:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        contentType: response.headers.get('content-type'),
-        url: response.url
-      });
-
-      const responseText = await response.text();
-      console.log('[LOGIN RAW BODY]:', responseText);
-
-      let data = {};
-      try {
-        data = responseText ? JSON.parse(responseText) : {};
-      } catch (jsonErr) {
-        console.error('[LOGIN JSON PARSE ERROR]:', jsonErr, 'Cuerpo de la respuesta:', responseText);
-        throw new Error(`Servidor devolvió HTTP ${response.status} (${response.statusText}) sin JSON válido: ${responseText.slice(0, 150)}`);
-      }
-
-      if (!response.ok) {
-        throw new Error(data.error || data.details || `Error ${response.status}: Credenciales incorrectas`);
-      }
-
-      login(data.user, data.token);
-
-      if (data.user?.rol === 'COCINERO') navigate('/cocina');
-      else if (data.user?.rol === 'CAJERO') navigate('/caja');
-      else if (data.user?.rol === 'TOTEM' || data.user?.rol === 'CLIENTE') navigate('/cliente');
-      else navigate('/admin');
-    } catch (err) {
-      console.error('[LOGIN ERROR CATCH]:', err);
-      setError(err.message);
-    } finally {
+    // Validar únicamente: Usuario "Choco" y Contraseña "river91218"
+    if (cleanUser === 'Choco' && password === 'river91218') {
+      const userData = { id: 1, username: 'Choco', rol: 'ADMIN' };
+      const authToken = 'admin_token_choco_2026';
+      
+      localStorage.setItem('isAuthenticated', 'true');
+      login(userData, authToken);
+      navigate('/admin', { replace: true });
       setLoading(false);
+      return;
     }
+
+    // Si las credenciales no coinciden: NO guardar nada en localStorage
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setError('Usuario o contraseña incorrectos');
+    setLoading(false);
   };
 
   return (
@@ -181,7 +157,6 @@ const AdminLogin = () => {
               </div>
             </div>
 
-            {/* Submit */}
             <button
               id="admin-login-submit"
               type="submit"
@@ -205,6 +180,47 @@ const AdminLogin = () => {
                 </>
               )}
             </button>
+            
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-white/10"></div>
+              <span className="flex-shrink-0 mx-4 text-white/30 text-xs uppercase font-bold tracking-wider">O</span>
+              <div className="flex-grow border-t border-white/10"></div>
+            </div>
+
+            <div className="flex justify-center mt-2">
+              <GoogleLogin
+                onSuccess={async (credentialResponse) => {
+                  setError('');
+                  setLoading(true);
+                  try {
+                    const res = await fetch('/api/auth/google', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ credential: credentialResponse.credential })
+                    });
+                    const data = await res.json();
+                    
+                    if (!res.ok) {
+                      throw new Error(data.error || 'Error de Google Auth');
+                    }
+                    
+                    login(data.user, data.token);
+                    navigate('/admin', { replace: true });
+                  } catch (err) {
+                    setError(err.message);
+                    localStorage.removeItem('isAuthenticated');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                onError={() => {
+                  setError('Falló la conexión con Google');
+                }}
+                theme="filled_black"
+                text="signin_with"
+                shape="pill"
+              />
+            </div>
           </form>
         </div>
 

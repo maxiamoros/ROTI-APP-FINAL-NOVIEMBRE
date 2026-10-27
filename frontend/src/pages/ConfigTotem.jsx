@@ -5,6 +5,7 @@ export default function ConfigTotem() {
   const { token, user } = useAuth();
   
   const [welcomeMessage, setWelcomeMessage] = useState('TOCA LA PANTALLA PARA COMENZAR');
+  const [whitelistEmails, setWhitelistEmails] = useState('maxiamoros123@gmail.com');
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +26,7 @@ export default function ConfigTotem() {
       if(resConf.ok) {
         const conf = await resConf.json();
         if(conf.welcomeMessage) setWelcomeMessage(conf.welcomeMessage);
+        if(conf.WHITELIST_EMAILS) setWhitelistEmails(conf.WHITELIST_EMAILS);
       }
       if(resProd.ok) setProductos(await resProd.json());
       if(resCat.ok) setCategorias(await resCat.json());
@@ -45,7 +47,8 @@ export default function ConfigTotem() {
           'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify([
-          { clave: 'welcomeMessage', valor: welcomeMessage }
+          { clave: 'welcomeMessage', valor: welcomeMessage },
+          { clave: 'WHITELIST_EMAILS', valor: whitelistEmails }
         ])
       });
       if(res.ok) alert('Configuración guardada exitosamente');
@@ -111,6 +114,18 @@ export default function ConfigTotem() {
               value={welcomeMessage}
               onChange={(e) => setWelcomeMessage(e.target.value)}
               className="w-full bg-[#1e272b] border border-[#3A4A51] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-roti-primary transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-roti-cream/80 font-bold mb-2">Correos Autorizados (Login Google)</label>
+            <p className="text-sm text-roti-cream/50 mb-2">Separa los correos con comas. Ejemplo: maxiamoros123@gmail.com, otro@gmail.com</p>
+            <input 
+              type="text" 
+              value={whitelistEmails}
+              onChange={(e) => setWhitelistEmails(e.target.value)}
+              className="w-full bg-[#1e272b] border border-[#3A4A51] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-roti-primary transition-colors font-mono text-sm"
+              placeholder="admin@gmail.com, empleado@gmail.com"
             />
           </div>
           

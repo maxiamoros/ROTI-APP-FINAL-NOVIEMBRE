@@ -9,10 +9,10 @@ const formatPeso = (n) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 
 const METODOS_PAGO = [
-  { id: 'efectivo', label: 'Efectivo',     icon: '', color: 'emerald' },
-  { id: 'debito',   label: 'Débito',       icon: '', color: 'blue' },
-  { id: 'credito',  label: 'Crédito',      icon: '', color: 'violet' },
-  { id: 'qr',       label: 'QR / Transfer',icon: '', color: 'orange' },
+  { id: 'efectivo', label: 'Efectivo', icon: '', color: 'emerald' },
+  { id: 'debito', label: 'Débito', icon: '', color: 'blue' },
+  { id: 'credito', label: 'Crédito', icon: '', color: 'violet' },
+  { id: 'qr', label: 'QR / Transfer', icon: '', color: 'orange' },
 ];
 
 // 
@@ -31,7 +31,7 @@ const ProductoCard = ({ producto, onClick }) => (
     ) : (
       <span className="text-2xl">{producto.emoji || '️'}</span>
     )}
-    
+
     <span className="text-sm font-medium text-roti-cream leading-tight line-clamp-2 mt-1">{producto.nombre}</span>
     <span className="text-sm font-bold text-orange-400 mt-auto">{formatPeso(producto.precio)}</span>
     <span className="absolute top-2 right-2 w-5 h-5 bg-roti-secondary rounded-full flex items-center justify-center
@@ -73,7 +73,7 @@ const CarritoItem = ({ item, onAumentar, onDisminuir, onEliminar }) => (
       className="text-slate-600 hover:text-red-400 transition-colors ml-1 opacity-0 group-hover:opacity-100"
       title="Eliminar"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg>
     </button>
   </div>
 );
@@ -92,7 +92,7 @@ const ModalCobro = ({ total, descuento, onConfirmar, onCancelar }) => {
         <div className="px-6 py-4 border-b border-[#4A5E68] flex items-center justify-between">
           <h2 className="text-lg font-bold text-roti-cream">Confirmar Cobro</h2>
           <button onClick={onCancelar} className="text-roti-cream/60 hover:text-roti-cream transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
           </button>
         </div>
 
@@ -110,9 +110,8 @@ const ModalCobro = ({ total, descuento, onConfirmar, onCancelar }) => {
                 <button
                   key={m.id}
                   onClick={() => setMetodo(m.id)}
-                  className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${
-                    metodo === m.id ? 'border-orange-500 bg-roti-secondary/10 text-orange-300' : 'border-[#4A5E68] bg-[#3A4A51]/50 text-roti-cream/60 hover:border-[#4A5E68]'
-                  }`}
+                  className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${metodo === m.id ? 'border-orange-500 bg-roti-secondary/10 text-orange-300' : 'border-[#4A5E68] bg-[#3A4A51]/50 text-roti-cream/60 hover:border-[#4A5E68]'
+                    }`}
                 >
                   <span>{m.icon}</span> {m.label}
                 </button>
@@ -175,10 +174,10 @@ const Caja = () => {
           fetch(`\/api/categorias`, { headers: { 'Authorization': `Bearer ${token}` } }),
           fetch(`\/api/ventas`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
-        if(resProd.ok) setProductos(await resProd.json());
-        if(resCat.ok) setCategorias(await resCat.json());
-        if(resVentas.ok) setHistorial(await resVentas.json());
-      } catch(err) { console.error(err); }
+        if (resProd.ok) setProductos(await resProd.json());
+        if (resCat.ok) setCategorias(await resCat.json());
+        if (resVentas.ok) setHistorial(await resVentas.json());
+      } catch (err) { console.error(err); }
     };
     fetchCatalog();
   }, [token]);
@@ -213,20 +212,20 @@ const Caja = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ items: itemsDetalle, total, metodo, estado: 'completado' })
       });
-      if(!res.ok) throw new Error('Error al registrar venta');
+      if (!res.ok) throw new Error('Error al registrar venta');
       const ventaDB = await res.json();
-      
+
       // 2. Guardar en KDS local
       const idKDS = Date.now();
       const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
       agregarPedidoKDS({ id: idKDS, hora, timestamp: idKDS, items: itemsDetalle, total, metodo });
-      
+
       // Actualizar historial local
       setHistorial([{ ...ventaDB, items: JSON.stringify(itemsDetalle) }, ...historial]);
       limpiarCarrito();
       setMostrarModal(false);
       mostrarToast(` Venta registrada  ${formatPeso(total)} en ${metodo}`);
-    } catch(err) {
+    } catch (err) {
       console.error(err);
       alert('Hubo un error al procesar la venta');
     }
@@ -281,12 +280,11 @@ const Caja = () => {
               {['Todas', ...categorias.map(c => c.nombre)].map((cat) => {
                 const emoji = cat === 'Todas' ? '' : categorias.find(c => c.nombre === cat)?.emoji;
                 return (
-                <button key={cat} onClick={() => setCategoriaActiva(cat)}
-                  className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
-                    categoriaActiva === cat ? 'bg-roti-secondary border-orange-500 text-roti-cream' : 'bg-[#3A4A51] border-[#4A5E68] text-roti-cream/60 hover:border-[#4A5E68] hover:text-roti-cream'
-                  }`}>
-                  {cat !== 'Todas' && <span>{emoji} </span>}{cat}
-                </button>
+                  <button key={cat} onClick={() => setCategoriaActiva(cat)}
+                    className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${categoriaActiva === cat ? 'bg-roti-secondary border-orange-500 text-roti-cream' : 'bg-[#3A4A51] border-[#4A5E68] text-roti-cream/60 hover:border-[#4A5E68] hover:text-roti-cream'
+                      }`}>
+                    {cat !== 'Todas' && <span>{emoji} </span>}{cat}
+                  </button>
                 )
               })}
             </div>
@@ -317,17 +315,17 @@ const Caja = () => {
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {historial.map((v) => {
                   let items = [];
-                  try { items = JSON.parse(v.items); } catch(e) {}
+                  try { items = JSON.parse(v.items); } catch (e) { }
                   return (
-                  <div key={v.id} className="bg-[#3A4A51] rounded-xl p-3 border border-[#4A5E68] text-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-roti-cream/60 text-xs font-mono">{new Date(v.fecha).toLocaleTimeString()}</span>
+                    <div key={v.id} className="bg-[#3A4A51] rounded-xl p-3 border border-[#4A5E68] text-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-roti-cream/60 text-xs font-mono">{new Date(v.fecha).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-roti-cream/80">{items.length || 0} ítems</span>
+                        <span className="font-bold text-roti-cream">{formatPeso(v.total)}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-roti-cream/80">{items.length || 0} ítems</span>
-                      <span className="font-bold text-roti-cream">{formatPeso(v.total)}</span>
-                    </div>
-                  </div>
                   )
                 })}
               </div>

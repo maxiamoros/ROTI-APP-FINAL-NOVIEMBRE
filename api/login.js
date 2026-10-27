@@ -28,18 +28,31 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'Username y password son requeridos' });
     }
 
+    // Credenciales por defecto para admin (Choco / river91218)
+    if (username.trim().toLowerCase() === 'choco' && password === 'river91218') {
+      const token = jwt.sign(
+        { id: 1, username: 'Choco', rol: 'ADMIN' },
+        JWT_SECRET,
+        { expiresIn: '8h' }
+      );
+      return res.status(200).json({
+        token,
+        user: { id: 1, username: 'Choco', rol: 'ADMIN' }
+      });
+    }
+
     const user = await prisma.usuario.findUnique({
       where: { username }
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
     const isValid = await bcrypt.compare(password, user.password);
     
     if (!isValid) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
     const token = jwt.sign(

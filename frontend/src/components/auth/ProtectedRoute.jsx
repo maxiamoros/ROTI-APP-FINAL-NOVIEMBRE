@@ -1,15 +1,15 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
+  const isAuth = localStorage.getItem('isAuthenticated') === 'true';
 
-  if (!token) {
+  if (!isAuth) {
     return <Navigate to="/admin/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user?.rol)) {
-    // Si no tiene el rol, mandarlo a una ruta por defecto según su rol
+  if (allowedRoles && user?.rol && !allowedRoles.includes(user?.rol)) {
     switch(user?.rol) {
       case 'COCINERO':
         return <Navigate to="/cocina" replace />;
@@ -23,7 +23,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     }
   }
 
-  return children;
+  return children ? children : <Outlet />;
 };
 
 export default ProtectedRoute;

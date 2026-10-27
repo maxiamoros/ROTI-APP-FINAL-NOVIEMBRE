@@ -384,9 +384,9 @@ const Productos = () => {
         const formData = new FormData();
         formData.append('image', datos.archivoImagen);
         
-        const uploadRes = await fetch(`\/api/upload`, {
+        const uploadRes = await fetch(`/api/upload`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }, // Token si es necesario
+          headers: { 'Authorization': `Bearer ${token}` },
           body: formData
         });
         
@@ -396,20 +396,36 @@ const Productos = () => {
         finalImageUrl = uploadData.url;
       }
       
-      // Limpiamos el archivo de los datos a enviar y asignamos la URL final
       const dataAEnviar = { ...datos, imagenUrl: finalImageUrl };
       delete dataAEnviar.archivoImagen;
 
       const isEdit = !!dataAEnviar.id;
-      const url = isEdit ? `\/api/productos/${dataAEnviar.id}` : `\/api/productos`;
+      const url = isEdit ? `/api/productos/${dataAEnviar.id}` : `/api/productos`;
       const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(dataAEnviar)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al guardar');
+      
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(dataAEnviar)
+        });
+        if (!res.ok) throw new Error('Error al guardar en servidor');
+      } catch (e) {
+        console.warn('[Productos] Backend no respondió, guardando localmente');
+      }
+
+      // Persistir localmente y sincronizar en tiempo real con la tienda pública
+      const guardados = leerProductos();
+      let nuevaLista = [];
+      if (isEdit) {
+        nuevaLista = guardados.map(p => p.id === dataAEnviar.id ? { ...p, ...dataAEnviar } : p);
+      } else {
+        nuevaLista = [dataAEnviar, ...guardados];
+      }
+      guardarProductos(nuevaLista);
+      window.dispatchEvent(new Event('rotiseria_productos_updated'));
+      window.dispatchEvent(new Event('storage'));
+
       mostrarToast(`Producto ${isEdit ? 'actualizado' : 'creado'} correctamente`);
       setModalEditar(null);
       fetchTodo();

@@ -49,111 +49,194 @@ const LandingNavbar = ({ scrolled }) => {
     { name: 'DELIVERY',        href: '/cliente',         type: 'route' },
     { name: 'GALERÍA',         href: '#galeria',         type: 'hash'  },
     { name: 'CONTACTO',        href: '#contacto',        type: 'hash'  },
+    { name: 'PANEL ADMIN',     href: '/admin/login',     type: 'route', isAdmin: true },
   ];
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled ? 'navbar-glass' : 'bg-transparent'
-      }`}
-    >
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
-        <div className="flex items-center justify-between h-20">
-          {/* ── Logo Circular Vintage ── */}
-          <a href="#inicio" className="flex-shrink-0 group">
-            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#d4a843] shadow-[0_0_20px_rgba(212,168,67,0.4)] group-hover:shadow-[0_0_30px_rgba(212,168,67,0.7)] transition-all duration-300 group-hover:scale-105">
-              <img
-                src="/roti_logo.jpg"
-                alt="La Rotisería Anti"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </a>
+    <>
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          scrolled ? 'navbar-glass' : 'bg-transparent'
+        }`}
+      >
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
+          <div className="flex items-center justify-between h-20">
+            {/* ── Logo Circular Vintage ── */}
+            <a href="#inicio" className="flex-shrink-0 group">
+              <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#d4a843] shadow-[0_0_20px_rgba(212,168,67,0.4)] group-hover:shadow-[0_0_30px_rgba(212,168,67,0.7)] transition-all duration-300 group-hover:scale-105">
+                <img
+                  src="/roti_logo.jpg"
+                  alt="La Rotisería Anti"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </a>
 
-          {/* ── Nav Links Desktop ── */}
-          <nav className="hidden xl:flex items-center gap-1">
+            {/* ── Nav Links Desktop ── */}
+            <nav className="hidden xl:flex items-center gap-1">
+              {publicLinks.filter((l) => !l.isAdmin).map((link) =>
+                link.type === 'route' ? (
+                  <Link
+                    key={link.name}
+                    to={link.href}
+                    className="nav-link px-3 py-2 text-xs font-semibold tracking-widest text-white/80 hover:text-[#ff8c00] transition-colors duration-200"
+                  >
+                    {link.name}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    className="nav-link px-3 py-2 text-xs font-semibold tracking-widest text-white/80 hover:text-[#ff8c00] transition-colors duration-200"
+                  >
+                    {link.name}
+                  </a>
+                )
+              )}
+            </nav>
+
+            {/* ── CTA Button + Admin Direct Link + Hamburger Menu ── */}
+            <div className="flex items-center gap-3">
+              {/* Direct Desktop Admin Link */}
+              <Link
+                to="/admin/login"
+                aria-label="Ir al panel de administración"
+                title="Acceso Administración"
+                className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold tracking-widest text-[#d4a843] bg-[#d4a843]/10 hover:bg-[#d4a843]/20 border border-[#d4a843]/30 hover:border-[#d4a843]/60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4a843]"
+              >
+                <svg className="w-3.5 h-3.5 text-[#d4a843]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span>PANEL ADMIN</span>
+              </Link>
+
+              <Link
+                to="/cliente"
+                id="cta-pedido-btn"
+                className="btn-orange-cta hidden sm:inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold text-sm tracking-wide whitespace-nowrap"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                </svg>
+                Hace tu Pedido
+              </Link>
+
+              {/* Hamburger Button (Siempre Visible en todas las resoluciones) */}
+              <button
+                id="mobile-menu-btn"
+                aria-label="Abrir menú de navegación"
+                title="Menú"
+                className="w-11 h-11 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-[#d4a843]/20 hover:border-[#d4a843]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4a843] transition-all cursor-pointer"
+                onClick={() => setMenuOpen(!menuOpen)}
+              >
+                <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2 bg-[#d4a843]' : ''}`} />
+                <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
+                <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2 bg-[#d4a843]' : ''}`} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Overlay Backdrop ── */}
+      {menuOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar / Drawer Panel Sólido (#121212) ── */}
+      <aside
+        id="sidebar-drawer"
+        className={`sidebar-drawer fixed top-0 right-0 h-full w-[320px] max-w-[85vw] bg-[#121212] z-[9999] shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
+          menuOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        style={{ backgroundColor: '#121212', opacity: 1 }}
+      >
+        {/* Drawer Header */}
+        <div className="p-6 border-b border-[#d4a843]/20 flex items-center justify-between bg-[#121212]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-[#d4a843] shadow-md">
+              <img src="/roti_logo.jpg" alt="La Rotisería" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex flex-col leading-none">
+              <span className="font-script text-xl text-[#d4a843] leading-none">La Rotisería</span>
+              <span className="text-[9px] font-bold text-white/50 tracking-widest uppercase mt-0.5">Menú Principal</span>
+            </div>
+          </div>
+
+          {/* Close Icon (X) */}
+          <button
+            onClick={() => setMenuOpen(false)}
+            aria-label="Cerrar menú"
+            className="w-9 h-9 rounded-full bg-white/5 border border-[#d4a843]/40 flex items-center justify-center text-[#d4a843] hover:text-white hover:bg-[#d4a843]/30 hover:border-[#d4a843] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4a843] transition-all shadow-md active:scale-95 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Drawer Navigation Links */}
+        <div className="p-6 flex-1 overflow-y-auto flex flex-col justify-between bg-[#121212]">
+          <nav className="flex flex-col gap-2">
             {publicLinks.map((link) =>
               link.type === 'route' ? (
                 <Link
                   key={link.name}
                   to={link.href}
-                  className="nav-link px-3 py-2 text-xs font-semibold tracking-widest text-white/80 hover:text-[#ff8c00] transition-colors duration-200"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label={link.isAdmin ? "Ir al panel de administración" : undefined}
+                  className={`px-4 py-3.5 rounded-xl text-sm font-semibold tracking-widest transition-all flex items-center justify-between group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4a843] ${
+                    link.isAdmin
+                      ? 'text-[#d4a843] bg-[#d4a843]/10 border border-[#d4a843]/30 hover:bg-[#d4a843]/20 hover:border-[#d4a843]/60 font-bold mt-2'
+                      : 'text-white hover:text-[#d4a843] hover:bg-[#d4a843]/10 border border-transparent hover:border-[#d4a843]/20'
+                  }`}
                 >
-                  {link.name}
+                  <span className="flex items-center gap-2">
+                    {link.isAdmin && (
+                      <svg className="w-4 h-4 text-[#d4a843]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                      </svg>
+                    )}
+                    {link.name}
+                  </span>
+                  <span className="text-[#d4a843] opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all">→</span>
                 </Link>
               ) : (
                 <a
                   key={link.name}
                   href={link.href}
-                  className="nav-link px-3 py-2 text-xs font-semibold tracking-widest text-white/80 hover:text-[#ff8c00] transition-colors duration-200"
+                  onClick={() => setMenuOpen(false)}
+                  className="px-4 py-3.5 rounded-xl text-sm font-semibold tracking-widest text-white hover:text-[#d4a843] hover:bg-[#d4a843]/10 border border-transparent hover:border-[#d4a843]/20 transition-all flex items-center justify-between group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4a843]"
                 >
-                  {link.name}
+                  <span>{link.name}</span>
+                  <span className="text-[#d4a843] opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all">→</span>
                 </a>
               )
             )}
           </nav>
 
-          {/* ── CTA Button + Mobile Menu ── */}
-          <div className="flex items-center gap-4">
+          {/* Drawer Footer CTA */}
+          <div className="pt-6 border-t border-[#d4a843]/15 flex flex-col gap-4 bg-[#121212]">
             <Link
               to="/cliente"
-              id="cta-pedido-btn"
-              className="btn-orange-cta hidden sm:inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold text-sm tracking-wide whitespace-nowrap"
+              onClick={() => setMenuOpen(false)}
+              className="btn-orange-cta w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-white font-bold text-sm shadow-xl tracking-wide"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
               </svg>
               Hace tu Pedido
             </Link>
-
-            {/* Mobile burger */}
-            <button
-              id="mobile-menu-btn"
-              className="xl:hidden w-10 h-10 flex flex-col items-center justify-center gap-1.5 rounded-lg hover:bg-white/10 transition-colors"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
-              <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
-              <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
-              <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
-            </button>
+            <div className="text-center text-xs text-white/40">
+              La Rotisería &copy; {new Date().getFullYear()}
+            </div>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {menuOpen && (
-          <div className="xl:hidden pb-6 border-t border-white/10 mt-2 pt-4 flex flex-col gap-1 animate-fade-in-up">
-            {publicLinks.map((link) =>
-              link.type === 'route' ? (
-                <Link
-                  key={link.name}
-                  to={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="px-4 py-3 text-sm font-semibold tracking-widest text-white/80 hover:text-[#ff8c00] hover:bg-white/5 rounded-lg transition-colors"
-                >
-                  {link.name}
-                </Link>
-              ) : (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="px-4 py-3 text-sm font-semibold tracking-widest text-white/80 hover:text-[#ff8c00] hover:bg-white/5 rounded-lg transition-colors"
-                >
-                  {link.name}
-                </a>
-              )
-            )}
-
-            <Link
-              to="/cliente"
-              className="mt-3 mx-4 btn-orange-cta flex items-center justify-center gap-2 px-6 py-3 rounded-full text-white font-bold text-sm"
-            >
-              Hace tu Pedido
-            </Link>
-          </div>
-        )}
-      </div>
-    </header>
+      </aside>
+    </>
   );
 };
 

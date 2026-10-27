@@ -1,23 +1,26 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs');
 
 const router = express.Router();
 
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-
-let supabase;
-if (supabaseUrl && supabaseKey) {
-  supabase = createClient(supabaseUrl, supabaseKey);
-} else {
-  console.warn('⚠️ Faltan SUPABASE_URL y/o SUPABASE_SERVICE_ROLE_KEY en el .env');
+// Ensure public/uploads directory exists
+const uploadDir = path.join(__dirname, '../../frontend/public/uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Use memory storage for Serverless
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `producto-${uniqueSuffix}${ext}`);
+  }
+});
 
 const upload = multer({
   storage: storage,
@@ -35,7 +38,6 @@ const upload = multer({
   }
 });
 
-// Middleware for handling multer errors gracefully
 const handleUpload = (req, res, next) => {
   const uploadSingle = upload.single('image');
   
@@ -49,45 +51,14 @@ const handleUpload = (req, res, next) => {
   });
 };
 
-const BUCKET_NAME = process.env.SUPABASE_BUCKET || 'productos';
-
 router.post('/', handleUpload, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se subió ninguna imagen' });
     }
 
-    if (!supabase) {
-      return res.status(500).json({ error: 'Supabase no está configurado en el servidor (faltan SUPABASE_URL y/o llaves)' });
-    }
-
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(req.file.originalname);
-    const filename = `producto-${uniqueSuffix}${ext}`;
-    
-    // Upload to Supabase Storage
-    const { data, error } = await supabase
-      .storage
-      .from(BUCKET_NAME)
-      .upload(filename, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: true
-      });
-
-    if (error) {
-      console.error('Error uploading to Supabase Storage:', error);
-      return res.status(500).json({ 
-        error: `Error al guardar imagen en el bucket '${BUCKET_NAME}': ${error.message || 'Verifica que el bucket exista y sea público'}` 
-      });
-    }
-
-    // Get public URL
-    const { data: publicUrlData } = supabase
-      .storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(filename);
-
-    const imageUrl = publicUrlData.publicUrl;
+    // Return the public URL for the image
+    const imageUrl = `/uploads/${req.file.filename}`;
     
     res.status(200).json({ url: imageUrl });
   } catch (error) {

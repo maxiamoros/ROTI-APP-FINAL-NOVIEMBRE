@@ -222,6 +222,24 @@
   border-bottom: 1px solid #3A4A51;
 }
 
+/* Sidebar / Drawer menu styles */
+.sidebar-drawer {
+  background-color: #121212 !important;
+  background-image: none !important;
+  opacity: 1 !important;
+  z-index: 9999 !important;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.8) !important;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  z-index: 9998;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
 @media print {
   body * { visibility: hidden; }
   .print-only, .print-only * { visibility: visible; }
@@ -236,3 +254,4 @@
   }
   @page { margin: 0; }
 }
+

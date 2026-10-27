@@ -6,8 +6,8 @@ const ChatHeader = () => {
           <span className="text-xl font-bold text-roti-primary">A</span>
         </div>
         <div>
-          <h3 className="font-semibold text-roti-dark">ANTI (Asistente Local)</h3>
-          <p className="text-xs text-roti-cream/50">Conectado al panel de gestión</p>
+          <h3 className="font-semibold text-roti-dark">RotiAI (Gemini + LangChain)</h3>
+          <p className="text-xs text-roti-cream/50">Conectado con el contexto de la web</p>
         </div>
       </div>
       <div className="flex items-center gap-2">

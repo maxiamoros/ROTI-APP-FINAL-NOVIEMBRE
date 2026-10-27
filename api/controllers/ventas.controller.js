@@ -13,9 +13,19 @@ const getVentas = async (req, res) => {
 
 const createVenta = async (req, res) => {
   try {
-    const { items, total, metodo, estado } = req.body;
+    const { items, total, metodo, estado } = req.body || {};
+    // Validate request body
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Items array is required' });
+    }
+    if (typeof total === 'undefined' || isNaN(parseFloat(total))) {
+      return res.status(400).json({ error: 'Total must be a number' });
+    }
+    if (!metodo) {
+      return res.status(400).json({ error: 'Metodo is required' });
+    }
     // items debe ser un array: [{ id: productoId, cantidad, nombre, precio }]
-    
+
     // 1. Guardar el pedido (venta)
     const pedido = await prisma.pedido.create({
       data: {
@@ -28,17 +38,17 @@ const createVenta = async (req, res) => {
     // 2. Descontar stock de insumos usando transacciones
     // Por cada item vendido, buscamos su receta
     const updates = [];
-    
+
     for (const item of items) {
       const producto = await prisma.producto.findUnique({
         where: { id: parseInt(item.id) },
         include: { receta: true }
       });
-      
+
       if (producto && producto.receta) {
         for (const recetaItem of producto.receta) {
           const cantidadADescontar = recetaItem.cantidad * item.cantidad;
-          
+
           updates.push(
             prisma.insumo.update({
               where: { id: recetaItem.insumoId },
@@ -50,7 +60,7 @@ const createVenta = async (req, res) => {
         }
       }
     }
-    
+
     if (updates.length > 0) {
       await prisma.$transaction(updates);
     }

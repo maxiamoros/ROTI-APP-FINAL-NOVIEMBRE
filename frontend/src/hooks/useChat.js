@@ -124,7 +124,7 @@ export const useChat = () => {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: '¡Hola! Soy **ANTI**, tu asistente de gestión.\n\nPuedo ayudarte con:\n- Consultas de ventas y estadísticas\n- Estado del inventario y alertas\n- Pedidos en cocina\n- Sugerencias operativas\n\n¿En qué puedo ayudarte hoy?'
+      content: '¡Hola! Soy **RotiAI**, tu asistente virtual.\n\nPuedo ayudarte con:\n- Menú y especialidades (milanesas, pizzas, empanadas, postres)\n- Precios actualizados y promociones del día\n- Cómo realizar tu pedido online (/cliente) o por WhatsApp\n- Horarios de atención y envíos a domicilio\n\n¿Qué te gustaría saber o pedir hoy?'
     }
   ]);
   const [input, setInput] = useState('');
@@ -136,25 +136,45 @@ export const useChat = () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    const updatedMessages = [...messages, { role: 'user', content: userMessage }];
+    setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
     setError(null);
 
-    // Simular tiempo de tipeo humano (entre 300ms y 700ms)
-    const typingDelay = Math.floor(Math.random() * (700 - 300 + 1)) + 300;
+    try {
+      // Llamada al backend Express que ejecuta Python + LangChain + Gemini
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          mensaje: userMessage,
+          historial: updatedMessages.slice(-8)
+        })
+      });
 
-    setTimeout(() => {
-      try {
-        const responseText = generateLocalResponse(userMessage);
-        setMessages(prev => [...prev, { role: 'assistant', content: responseText }]);
-      } catch (err) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `**Error interno:** No pude procesar tu mensaje.` }]);
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
       }
-    }, typingDelay);
+
+      const data = await response.json();
+      if (data && data.respuesta) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.respuesta }]);
+      } else {
+        throw new Error('Respuesta no válida del servidor');
+      }
+    } catch (err) {
+      console.warn('[useChat] Error al conectar con /api/chat, utilizando respuesta contextual:', err);
+      // Fallback local en caso de desconexión o fallo de red
+      const fallbackText = generateLocalResponse(userMessage);
+      setMessages(prev => [...prev, { role: 'assistant', content: fallbackText }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return { messages, input, setInput, isLoading, error, sendMessage };
 };
+
