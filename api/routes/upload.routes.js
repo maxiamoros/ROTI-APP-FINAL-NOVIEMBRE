@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { verifyToken, requireAdmin } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
 
@@ -51,7 +52,7 @@ const handleUpload = (req, res, next) => {
   });
 };
 
-router.post('/', handleUpload, async (req, res) => {
+router.post('/', verifyToken, requireAdmin, handleUpload, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se subió ninguna imagen' });

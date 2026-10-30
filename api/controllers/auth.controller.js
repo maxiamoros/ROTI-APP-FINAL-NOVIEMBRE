@@ -1,8 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../prisma');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'rotiapp_secreto_super_seguro_2026';
+const { JWT_SECRET } = require('../middlewares/auth.middleware');
 
 const login = async (req, res) => {
   try {
@@ -57,19 +56,18 @@ const googleLogin = async (req, res) => {
     const { credential } = req.body;
     if (!credential) return res.status(400).json({ error: 'Credential is required' });
 
-    let payload;
-    if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_ID !== 'TU_GOOGLE_CLIENT_ID') {
-      const ticket = await client.verifyIdToken({
-          idToken: credential,
-          audience: process.env.GOOGLE_CLIENT_ID,
-      });
-      payload = ticket.getPayload();
-    } else {
-      // Decode directly if Client ID is not configured (solo para desarrollo/pruebas rápidas)
-      payload = jwt.decode(credential);
+    // Sin Client ID no se puede verificar la firma del token: aceptarlo permitiría falsificar cualquier email
+    if (!process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID === 'TU_GOOGLE_CLIENT_ID') {
+      return res.status(503).json({ error: 'El login con Google no está configurado en el servidor' });
     }
-    
-    if (!payload || !payload.email) {
+
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload || !payload.email || !payload.email_verified) {
       return res.status(400).json({ error: 'No se pudo obtener el correo de Google' });
     }
 

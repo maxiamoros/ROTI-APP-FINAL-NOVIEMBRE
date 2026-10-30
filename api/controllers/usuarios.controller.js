@@ -58,6 +58,9 @@ const updateUsuario = async (req, res) => {
     
     res.json(usuario);
   } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'El nombre de usuario ya existe' });
+    }
     res.status(500).json({ error: 'Error al actualizar usuario' });
   }
 };

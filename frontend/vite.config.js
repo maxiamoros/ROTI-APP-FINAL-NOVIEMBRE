@@ -9,8 +9,14 @@ export default defineConfig({
     emptyOutDir: true
   },
   server: {
+    host: true,
+    allowedHosts: true,
     proxy: {
       '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      },
+      '/api-docs': {
         target: 'http://localhost:3001',
         changeOrigin: true
       }

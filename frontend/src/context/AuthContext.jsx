@@ -26,10 +26,10 @@ export const AuthProvider = ({ children }) => {
       console.warn('[AuthContext] Error leyendo datos de auth en localStorage:', err);
     }
 
-    if (isAuth) {
+    if (isAuth && storedUser && storedToken) {
       setIsAuthenticated(true);
-      setUser(storedUser || { id: 1, username: 'Choco', rol: 'ADMIN' });
-      setToken(storedToken || 'admin_token_choco_2026');
+      setUser(storedUser);
+      setToken(storedToken);
     } else {
       setIsAuthenticated(false);
       setUser(null);
@@ -44,16 +44,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (userData, authToken) => {
-    const userToSave = userData || { id: 1, username: 'Choco', rol: 'ADMIN' };
-    const tokenToSave = authToken || 'admin_token_choco_2026';
-    
+    if (!userData || !authToken) return;
+
     localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('user', JSON.stringify(userToSave));
-    localStorage.setItem('token', tokenToSave);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', authToken);
 
     setIsAuthenticated(true);
-    setUser(userToSave);
-    setToken(tokenToSave);
+    setUser(userData);
+    setToken(authToken);
   };
 
   const logout = () => {

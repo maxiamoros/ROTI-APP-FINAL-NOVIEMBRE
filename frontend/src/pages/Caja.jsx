@@ -210,15 +210,22 @@ const Caja = () => {
       const res = await fetch(`\/api/ventas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ items: itemsDetalle, total, metodo, estado: 'completado' })
+        body: JSON.stringify({ items: itemsDetalle, total, metodo, estado: 'nuevo' })
       });
       if (!res.ok) throw new Error('Error al registrar venta');
       const ventaDB = await res.json();
 
-      // 2. Guardar en KDS local
-      const idKDS = Date.now();
+      // 2. Respaldo local (Cocina KDS sincroniza desde la API)
       const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-      agregarPedidoKDS({ id: idKDS, hora, timestamp: idKDS, items: itemsDetalle, total, metodo });
+      agregarPedidoKDS({
+        id: ventaDB.id,
+        numero: `#${String(ventaDB.id).padStart(3, '0')}`,
+        hora,
+        timestamp: Date.now(),
+        items: itemsDetalle,
+        total,
+        metodo,
+      });
 
       // Actualizar historial local
       setHistorial([{ ...ventaDB, items: JSON.stringify(itemsDetalle) }, ...historial]);

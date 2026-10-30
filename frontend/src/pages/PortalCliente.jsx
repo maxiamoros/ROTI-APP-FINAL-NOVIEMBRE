@@ -376,13 +376,23 @@ export function PortalCliente() {
     const res = await fetch(`/api/ventas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ items: itemsDetalle, total: p.total, metodo: metodoApi, estado: 'completado' })
+      body: JSON.stringify({ items: itemsDetalle, total: p.total, metodo: metodoApi, estado: 'nuevo' })
     });
     if (!res.ok) throw new Error('Error al registrar venta');
+    const ventaDB = await res.json();
 
-    const idKDS = Date.now();
+    // Respaldo local (el KDS del admin lee la API; esto ayuda si se abre cocina en el mismo navegador)
     const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-    agregarPedidoKDS({ id: idKDS, hora, timestamp: idKDS, items: itemsDetalle, total: p.total, metodo: 'totem', nota });
+    agregarPedidoKDS({
+      id: ventaDB.id,
+      numero: `#${String(ventaDB.id).padStart(3, '0')}`,
+      hora,
+      timestamp: Date.now(),
+      items: itemsDetalle,
+      total: p.total,
+      metodo: 'totem',
+      nota,
+    });
   };
 
   /** Paso 2 (Local / Para llevar): eligió método de pago → registra y muestra el ticket. */

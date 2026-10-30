@@ -24,11 +24,28 @@ const getProductos = async (req, res) => {
   }
 };
 
+// Algunas pantallas envían categoriaId y otras sólo el nombre de la categoría.
+// Devuelve undefined cuando no se envió ninguno, para no pisar la categoría existente al editar.
+const resolverCategoriaId = async ({ categoriaId, categoriaNombre, categoria }) => {
+  if (categoriaId !== undefined && categoriaId !== '') {
+    return categoriaId === null ? null : parseInt(categoriaId);
+  }
+  const nombre = categoriaNombre || (typeof categoria === 'string' ? categoria : undefined);
+  if (!nombre) return undefined;
+  const cat = await prisma.categoria.findUnique({ where: { nombre } });
+  return cat ? cat.id : undefined;
+};
+
 const createProducto = async (req, res) => {
   try {
-    const { nombre, precio, imagenUrl, promptIA, categoriaId, receta, activo } = req.body;
-    
+    const { nombre, precio, imagenUrl, promptIA, receta, activo } = req.body;
+
+    if (!nombre || isNaN(parseFloat(precio))) {
+      return res.status(400).json({ error: 'Nombre y precio válido son obligatorios' });
+    }
+
     // receta debe ser un array de { insumoId, cantidad }
+    const categoriaId = await resolverCategoriaId(req.body);
 
     const producto = await prisma.producto.create({
       data: {
@@ -37,8 +54,8 @@ const createProducto = async (req, res) => {
         imagenUrl,
         promptIA,
         activo: activo !== undefined ? activo : true,
-        categoriaId: categoriaId ? parseInt(categoriaId) : null,
-        receta: receta ? {
+        categoriaId: categoriaId ?? null,
+        receta: Array.isArray(receta) ? {
           create: receta.map(r => ({
             insumoId: parseInt(r.insumoId),
             cantidad: parseFloat(r.cantidad)
@@ -61,20 +78,26 @@ const createProducto = async (req, res) => {
 const updateProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, precio, imagenUrl, promptIA, categoriaId, receta, activo } = req.body;
+    const { nombre, precio, imagenUrl, promptIA, receta, activo } = req.body;
+
+    if (precio !== undefined && isNaN(parseFloat(precio))) {
+      return res.status(400).json({ error: 'Precio inválido' });
+    }
+
+    const categoriaId = await resolverCategoriaId(req.body);
 
     // Primero actualizamos los datos básicos y borramos receta antigua si se envía una nueva
     const productoActualizado = await prisma.producto.update({
       where: { id: parseInt(id) },
       data: {
         nombre,
-        precio: parseFloat(precio),
+        precio: precio !== undefined ? parseFloat(precio) : undefined,
         imagenUrl,
         promptIA,
         activo: activo !== undefined ? activo : undefined,
-        categoriaId: categoriaId ? parseInt(categoriaId) : null,
+        categoriaId,
         // Si mandamos receta, recreamos las relaciones
-        ...(receta && {
+        ...(Array.isArray(receta) && {
           receta: {
             deleteMany: {}, // Borramos las anteriores
             create: receta.map(r => ({
@@ -94,6 +117,7 @@ const updateProducto = async (req, res) => {
 
     res.json(productoActualizado);
   } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Producto no encontrado' });
     res.status(500).json({ error: 'Error al actualizar producto' });
   }
 };

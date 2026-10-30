@@ -61,7 +61,7 @@ Diseñar, implementar y desplegar una solución tecnológica integral y modular 
 
 ## 🧠 Módulo de Inteligencia Artificial
 
-El sistema incorpora **RotiAI**, un agente de asistencia gastronómica impulsado por **Google Gemini API** (`gemini-1.5-flash`) orquestado mediante **LangChain** y un microservicio en Python:
+El sistema incorpora **RotiAI**, un agente de asistencia gastronómica impulsado por **Google Gemini API** (`gemini-3.5-flash`) orquestado mediante **LangChain** y un microservicio en Python:
 
 1. **Contexto de Negocio Inyectado en Tiempo Real (RAG Dinámico):** El asistente consulta directamente la base de datos (SQLite / PostgreSQL) extrayendo el catálogo de productos disponibles, precios al día y niveles de stock de cocina antes de responder, garantizando que jamás ofrezca platos agotados o desactualizados.
 2. **Memoria Conversacional Multi-Turno:** Mantiene el hilo y las preferencias del usuario a lo largo de toda la conversación utilizando buffers de memoria de LangChain (`MessagesPlaceholder`).
@@ -84,7 +84,7 @@ El sistema incorpora **RotiAI**, un agente de asistencia gastronómica impulsado
 | **SQLite / PostgreSQL** | Motores de persistencia de datos (desarrollo local y Supabase en nube) |
 | **Python 3.10+** | Runtime para ejecución de modelos de IA, agentes y pipelines de lenguaje natural |
 | **LangChain 0.3+** | Framework para orquestación de prompts, herramientas de memoria y agentes conversacionales |
-| **Google Gemini API** | Modelo de lenguaje fundacional (`gemini-1.5-flash`) para inferencia de alta velocidad |
+| **Google Gemini API** | Modelo de lenguaje fundacional (`gemini-3.5-flash`) para inferencia de alta velocidad |
 | **JSON Web Tokens (JWT)** | Firma y validación criptográfica de tokens para autenticación sin estado |
 | **Bcrypt.js** | Algoritmo de hashing robusto para el resguardo de contraseñas de usuarios |
 | **Google Identity Services** | Autenticación federada (OAuth 2.0) con inicio de sesión seguro mediante cuenta de Google |
@@ -201,7 +201,7 @@ JWT_SECRET="rotiapp_clave_secreta_jwt_produccion_2026"
 
 # Inteligencia Artificial Google Gemini
 GEMINI_API_KEY="AIzaSyTuClaveDeGoogleGeminiAqui"
-GEMINI_MODEL="gemini-1.5-flash"
+GEMINI_MODEL="gemini-3.5-flash"
 
 # Google OAuth (opcional para Login con Google)
 GOOGLE_CLIENT_ID="tu_google_client_id.apps.googleusercontent.com"
