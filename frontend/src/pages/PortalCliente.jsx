@@ -3,9 +3,18 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { agregarPedidoKDS } from '../data/pedidosKDS';
 import { PRODUCTOS_INICIALES, leerProductos, guardarProductos } from '../data/productos';
+import { MODALIDADES, PAGO_DELIVERY, crearPedido, urlWhatsApp, formatPeso } from '../utils/pedido';
+import ModalModalidad from '../components/pedido/ModalModalidad';
+import FormularioDelivery from '../components/pedido/FormularioDelivery';
+import PantallaTicket from '../components/pedido/PantallaTicket';
+import ModalPersonalizacionPedido from '../components/pedido/ModalPersonalizacionPedido';
 
-const formatPeso = (n) =>
-  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+
+
+// Inactividad: en el menú vuelve al screensaver a los 30s. Durante el cierre del pedido
+// (modalidad, pago, formulario, ticket) damos más margen para completar datos / enviar el WhatsApp.
+const IDLE_MS = 30000;
+const IDLE_MS_CHECKOUT = 120000;
 
 // Colores:
 // BG: #2A363B
@@ -99,94 +108,6 @@ const ProductCard = ({ producto, onClick }) => {
   );
 };
 
-// Customization Modal - Elegant Dark Style
-const ModalPersonalizacion = ({ producto, onClose, onConfirm }) => {
-  const [cantidad, setCantidad] = useState(1);
-  const [aclaracion, setAclaracion] = useState('');
-
-  const opAclaraciones = [
-    "Sin sal", "Poca sal", "Sin condimentos", "Bien cocido", "Para compartir"
-  ];
-
-  return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-      <div className="bg-[#181818] text-white w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-white/15">
-        <div className="p-6 border-b border-white/10 flex gap-5 items-center bg-[#121212]">
-          <div className="w-24 h-24 rounded-2xl overflow-hidden border border-white/10 flex-shrink-0 shadow-md">
-            {producto.imagenUrl ? (
-              <img
-                src={producto.imagenUrl}
-                alt={producto.nombre}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-white/5 flex items-center justify-center text-white/40 text-xs">Sin Foto</div>
-            )}
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white uppercase tracking-wide">{producto.nombre}</h2>
-            <p className="text-2xl font-black text-[#FECEA8] mt-1">{formatPeso(producto.precio)}</p>
-          </div>
-        </div>
-
-        <div className="p-6 flex-1 overflow-y-auto space-y-6 bg-[#181818]">
-          <div>
-            <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3">Aclaraciones opcionales</h3>
-            <div className="flex flex-wrap gap-2">
-              {opAclaraciones.map(op => (
-                <button
-                  key={op}
-                  onClick={() => setAclaracion(prev => prev === op ? '' : op)}
-                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer ${aclaracion === op
-                      ? 'bg-[#E84A5F] text-white shadow-md'
-                      : 'bg-white/5 text-white/70 hover:bg-white/15 border border-white/10'
-                    }`}
-                >
-                  {op}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3">Cantidad</h3>
-            <div className="flex items-center gap-5">
-              <button
-                onClick={() => setCantidad(c => Math.max(1, c - 1))}
-                className="w-12 h-12 rounded-full bg-white/10 text-white text-xl font-bold hover:bg-white/20 active:scale-95 flex items-center justify-center transition-all cursor-pointer border border-white/10"
-              >
-                -
-              </button>
-              <span className="text-3xl font-black text-white w-10 text-center">{cantidad}</span>
-              <button
-                onClick={() => setCantidad(c => c + 1)}
-                className="w-12 h-12 rounded-full bg-[#E84A5F] text-white text-xl font-bold hover:bg-red-600 active:scale-95 flex items-center justify-center shadow-md transition-all cursor-pointer"
-              >
-                +
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 border-t border-white/10 flex gap-3 bg-[#121212]">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3.5 rounded-full bg-white/10 text-white/80 text-sm font-bold hover:bg-white/20 transition-colors cursor-pointer"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={() => onConfirm({ ...producto, cantidad, aclaracion })}
-            className="flex-[2] py-3.5 rounded-full bg-gradient-to-r from-[#E84A5F] to-[#d4a843] text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-lg cursor-pointer"
-          >
-            Agregar {formatPeso(producto.precio * cantidad)}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 
 export function PortalCliente() {
   const { token } = useAuth();
@@ -205,11 +126,13 @@ export function PortalCliente() {
   // Idle State
   const [isIdle, setIsIdle] = useState(true);
   const idleTimeout = useRef(null);
+  const pasoRef = useRef(1); // copia de `paso` para leerla dentro del temporizador de inactividad
 
-  // Pago
-  const [paso, setPaso] = useState(1); // 1: Menú, 2: Pagar (Opciones), 3: Éxito
-  const [metodoPago, setMetodoPago] = useState('');
-  const [numPedido, setNumPedido] = useState(null);
+  // Cierre del pedido
+  // paso → 1: Menú | 4: Modalidad | 2: Pago (local/llevar) | 5: Formulario delivery | 3: Ticket
+  const [paso, setPaso] = useState(1);
+  // Única fuente de datos del pedido: se usa en el ticket, la impresión, la descarga y el WhatsApp
+  const [pedido, setPedido] = useState(null);
 
   // Safe Fallback para Productos (Defensive Coding)
   const productosValidos = useMemo(() => {
@@ -307,27 +230,42 @@ export function PortalCliente() {
     };
   }, [token, isIdle]);
 
+  // (Re)programa la vuelta al screensaver según el paso actual
+  const programarIdle = () => {
+    if (idleTimeout.current) clearTimeout(idleTimeout.current);
+    const espera = pasoRef.current === 1 ? IDLE_MS : IDLE_MS_CHECKOUT;
+    idleTimeout.current = setTimeout(() => {
+      setIsIdle(true);
+      setModalProd(null);
+      setPaso(1);
+    }, espera);
+  };
+
   // Activity Tracker
   const resetIdle = () => {
     if (isIdle) {
       setIsIdle(false);
       setCarrito([]);
+      setPedido(null);
       setPaso(1);
+      pasoRef.current = 1;
     }
-    if (idleTimeout.current) clearTimeout(idleTimeout.current);
-    idleTimeout.current = setTimeout(() => {
-      setIsIdle(true);
-      setModalProd(null);
-      setPaso(1);
-    }, 30000);
+    programarIdle();
   };
 
   useEffect(() => {
-    const evts = ['touchstart', 'click', 'mousemove', 'scroll'];
+    // 'keydown' para que escribir en el formulario de delivery cuente como actividad
+    const evts = ['touchstart', 'click', 'mousemove', 'scroll', 'keydown'];
     evts.forEach(e => window.addEventListener(e, resetIdle));
     resetIdle();
     return () => evts.forEach(e => window.removeEventListener(e, resetIdle));
   }, [isIdle]);
+
+  // Al cambiar de paso reprogramamos el temporizador con la espera que corresponde a ese paso
+  useEffect(() => {
+    pasoRef.current = paso;
+    if (!isIdle) programarIdle();
+  }, [paso]);
 
   const getCategoria = (p) => (p && (p.categoriaNombre || p.categoria)) ? String(p.categoriaNombre || p.categoria) : '';
 
@@ -353,7 +291,23 @@ export function PortalCliente() {
     if (!item) return;
     setCarrito(prev => {
       const arr = Array.isArray(prev) ? prev : [];
-      const idx = arr.findIndex(i => i.id === item.id && i.aclaracion === item.aclaracion);
+      const itemAcompKey = item.acompanamiento ? (item.acompanamiento.nombre || item.acompanamiento) : '';
+      const itemBebidaKey = item.bebida ? `${item.bebida.nombre}_${item.bebida.tamano}_${item.bebida.hielo}` : '';
+
+      const idx = arr.findIndex(i => {
+        const iAcompKey = i.acompanamiento ? (i.acompanamiento.nombre || i.acompanamiento) : '';
+        const iBebidaKey = i.bebida ? `${i.bebida.nombre}_${i.bebida.tamano}_${i.bebida.hielo}` : '';
+        return (
+          i.id === item.id &&
+          (i.opcion || '') === (item.opcion || '') &&
+          (i.medallones || 0) === (item.medallones || 0) &&
+          (i.sinTexto || '') === (item.sinTexto || '') &&
+          iAcompKey === itemAcompKey &&
+          iBebidaKey === itemBebidaKey &&
+          (i.aclaracion || '') === (item.aclaracion || '')
+        );
+      });
+
       if (idx >= 0) {
         const nuevo = [...arr];
         nuevo[idx].cantidad += (Number(item.cantidad) || 1);
@@ -368,43 +322,107 @@ export function PortalCliente() {
     setCarrito(prev => (Array.isArray(prev) ? prev : []).filter((_, i) => i !== idx));
   };
 
-  const procesarPago = async (metodo) => {
-    setMetodoPago(metodo);
-    const ticketNum = Math.floor(Math.random() * 900) + 100;
-    setNumPedido(ticketNum);
+  // ── Cierre del pedido ──────────────────────────────────────────────────────
 
-    const itemsDetalle = safeCarrito.map(i => ({
-      id: i.id,
-      nombre: (i.nombre || 'Producto') + (i.aclaracion ? ` (${i.aclaracion})` : ''),
-      cantidad: i.cantidad || 1,
-      precio: i.precio || 0,
-      imagenUrl: i.imagenUrl
-    }));
+  /** Paso 1: el cliente eligió modalidad → armamos el objeto `pedido` con una foto del carrito. */
+  const elegirModalidad = (modalidad) => {
+    setPedido(crearPedido(safeCarrito, modalidad));
+    // Local / Para llevar → paso de pago existente. Delivery → formulario de datos.
+    setPaso(modalidad === 'delivery' ? 5 : 2);
+  };
+
+  /** Registra la venta en el backend y la envía a Cocina (KDS). Lanza error si la API falla. */
+  const registrarPedido = async (p, metodoApi) => {
+    const itemsDetalle = p.items.map(i => {
+      const extras = [];
+      if (i.medallonesTexto) extras.push(i.medallonesTexto);
+      if (i.opcion) extras.push(`Opción: ${i.opcion}`);
+      if (i.sinTexto) extras.push(i.sinTexto);
+      if (i.acompanamiento) {
+        const acompNom = typeof i.acompanamiento === 'string' ? i.acompanamiento : i.acompanamiento.nombre;
+        extras.push(`Acomp: ${acompNom}`);
+      }
+      if (i.bebida) {
+        const bebNom = typeof i.bebida === 'string'
+          ? i.bebida
+          : `${i.bebida.nombre} ${i.bebida.tamano} (${i.bebida.hielo})`;
+        extras.push(`Bebida: ${bebNom}`);
+      }
+      if (i.aclaracion && !i.sinTexto && !i.acompanamiento && !i.bebida) {
+        extras.push(`Nota: ${i.aclaracion}`);
+      }
+
+      const detalleTexto = extras.length > 0 ? ` (${extras.join(' | ')})` : '';
+
+      return {
+        id: i.id,
+        nombre: `${i.nombre}${detalleTexto}`,
+        cantidad: i.cantidad,
+        precio: i.precio,
+        imagenUrl: i.imagenUrl,
+        sinTexto: i.sinTexto,
+        acompanamiento: i.acompanamiento,
+        bebida: i.bebida,
+        opcion: i.opcion,
+        medallones: i.medallones,
+      };
+    });
+
+    const datosEntrega = p.cliente
+      ? ` - ${p.cliente.nombre}, ${p.cliente.calle} ${p.cliente.numero}, Tel: ${p.cliente.telefono}${p.cliente.mapaUrl ? ` (GPS: ${p.cliente.mapaUrl})` : ''}`
+      : '';
+    const nota = `Ticket #${p.numero} - ${MODALIDADES[p.modalidad]?.label} - Pago: ${p.metodoPago}${datosEntrega}`;
+
+    const res = await fetch(`/api/ventas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ items: itemsDetalle, total: p.total, metodo: metodoApi, estado: 'completado' })
+    });
+    if (!res.ok) throw new Error('Error al registrar venta');
+
+    const idKDS = Date.now();
+    const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    agregarPedidoKDS({ id: idKDS, hora, timestamp: idKDS, items: itemsDetalle, total: p.total, metodo: 'totem', nota });
+  };
+
+  /** Paso 2 (Local / Para llevar): eligió método de pago → registra y muestra el ticket. */
+  const procesarPago = async (metodo) => {
+    if (!pedido) return;
+    const pedidoFinal = { ...pedido, metodoPago: metodo, fecha: new Date().toISOString() };
 
     try {
-      const nota = `Ticket #${ticketNum} - Pago: ${metodo}`;
-
-      const res = await fetch(`/api/ventas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ items: itemsDetalle, total: subtotal, metodo: metodo === 'Efectivo' ? 'efectivo' : 'mercadopago', estado: 'completado' })
-      });
-      if (!res.ok) throw new Error('Error al registrar venta');
-
-      const idKDS = Date.now();
-      const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-      agregarPedidoKDS({ id: idKDS, hora, timestamp: idKDS, items: itemsDetalle, total: subtotal, metodo: 'totem', nota });
-
+      await registrarPedido(pedidoFinal, metodo === 'Efectivo' ? 'efectivo' : 'mercadopago');
+      setPedido(pedidoFinal);
       setPaso(3);
-
-      setTimeout(() => {
-        window.print();
-      }, 500);
-
     } catch (e) {
       console.error('Error al procesar pago:', e);
       alert(`Error procesando pedido: ${e.message || 've a la caja por favor.'}`);
     }
+  };
+
+  /** Paso 2 (Delivery): datos válidos → abre WhatsApp, registra la venta y muestra el ticket. */
+  const enviarDelivery = (cliente) => {
+    if (!pedido) return;
+    const pedidoFinal = { ...pedido, cliente, metodoPago: PAGO_DELIVERY, fecha: new Date().toISOString() };
+    setPedido(pedidoFinal);
+
+    // Se abre de forma síncrona (dentro del click) para que el navegador no lo bloquee como popup.
+    // Si igual se bloquea, el ticket muestra un botón "Enviar por WhatsApp" como respaldo.
+    window.open(urlWhatsApp(pedidoFinal), '_blank', 'noopener,noreferrer');
+
+    // El pedido real viaja por WhatsApp: si el backend falla, no bloqueamos al cliente.
+    registrarPedido(pedidoFinal, 'whatsapp').catch(e =>
+      console.warn('[PortalCliente] No se pudo registrar el delivery en el sistema:', e.message)
+    );
+
+    setPaso(3);
+  };
+
+  /** Desde el ticket: limpia todo y vuelve al menú para un pedido nuevo. */
+  const nuevoPedido = () => {
+    setCarrito([]);
+    setPedido(null);
+    setPaso(1);
   };
 
   // Rendering
@@ -533,25 +551,73 @@ export function PortalCliente() {
               <p className="text-xs text-white/40 text-center mt-1">Seleccioná un plato para comenzar</p>
             </div>
           ) : (
-            safeCarrito.map((item, idx) => (
-              <div key={idx} className="bg-white/5 rounded-2xl p-4 flex gap-4 items-center border border-white/10 shadow-xs">
-                <div className="w-10 h-10 bg-[#E84A5F]/20 text-[#E84A5F] rounded-xl flex items-center justify-center font-black text-lg border border-[#E84A5F]/30">
-                  {item.cantidad}
+            safeCarrito.map((item, idx) => {
+              const acompNombre = item.acompanamiento
+                ? typeof item.acompanamiento === 'string'
+                  ? item.acompanamiento
+                  : item.acompanamiento.nombre
+                : '';
+              let bebidaDetalle = '';
+              if (item.bebida) {
+                if (typeof item.bebida === 'string') {
+                  bebidaDetalle = item.bebida;
+                } else {
+                  const partes = [item.bebida.nombre];
+                  if (item.bebida.tamano) partes.push(item.bebida.tamano);
+                  if (item.bebida.hielo) partes.push(`(${item.bebida.hielo})`);
+                  bebidaDetalle = partes.join(' ');
+                }
+              }
+
+              return (
+                <div key={idx} className="bg-white/5 rounded-2xl p-4 flex gap-3.5 items-start border border-white/10 shadow-xs">
+                  <div className="w-10 h-10 bg-[#E84A5F]/20 text-[#E84A5F] rounded-xl flex items-center justify-center font-black text-lg border border-[#E84A5F]/30 flex-shrink-0 mt-0.5">
+                    {item.cantidad}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-white font-bold text-base leading-tight break-words">{item.nombre}</h4>
+                    {item.medallonesTexto && (
+                      <p className="text-[#FECEA8] text-xs font-semibold mt-1">
+                        🥩 {item.medallonesTexto}
+                      </p>
+                    )}
+                    {item.opcion && (
+                      <p className="text-[#d4a843] text-xs font-semibold mt-0.5">
+                        Opción: {item.opcion}
+                      </p>
+                    )}
+                    {item.sinTexto && (
+                      <p className="text-[#E84A5F] text-xs font-bold mt-0.5">
+                        {item.sinTexto}
+                      </p>
+                    )}
+                    {acompNombre && (
+                      <p className="text-[#FECEA8] text-xs font-medium mt-0.5">
+                        + Acomp: {acompNombre}
+                      </p>
+                    )}
+                    {bebidaDetalle && (
+                      <p className="text-sky-300 text-xs font-medium mt-0.5">
+                        + Bebida: {bebidaDetalle}
+                      </p>
+                    )}
+                    {item.aclaracion && !item.sinTexto && !acompNombre && !bebidaDetalle && (
+                      <p className="text-white/50 text-xs mt-0.5 italic">
+                        Nota: {item.aclaracion}
+                      </p>
+                    )}
+                    <p className="text-[#FECEA8] font-black text-base mt-1.5">{formatPeso(item.precio * item.cantidad)}</p>
+                  </div>
+                  <button
+                    onClick={() => quitarDelCarrito(idx)}
+                    className="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center transition-colors cursor-pointer border border-red-500/20 flex-shrink-0"
+                    aria-label={`Eliminar ${item.nombre}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+                  </button>
                 </div>
-                <div className="flex-1">
-                  <h4 className="text-white font-bold text-base leading-tight">{item.nombre}</h4>
-                  {item.aclaracion && <p className="text-white/50 text-xs mt-0.5">{item.aclaracion}</p>}
-                  <p className="text-[#FECEA8] font-black text-base mt-1">{formatPeso(item.precio * item.cantidad)}</p>
-                </div>
-                <button
-                  onClick={() => quitarDelCarrito(idx)}
-                  className="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center transition-colors cursor-pointer border border-red-500/20"
-                  aria-label={`Eliminar ${item.nombre}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
-                </button>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -563,124 +629,72 @@ export function PortalCliente() {
           </div>
           <button
             disabled={carrito.length === 0}
-            onClick={() => setPaso(2)}
+            onClick={() => setPaso(4)}
             className="btn-orange-cta w-full py-4 rounded-full text-white text-lg font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-xl disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            Pagar Pedido
+            Finalizar Pedido
           </button>
         </div>
       </div>
 
       {/* MODALS */}
-      {modalProd && <ModalPersonalizacion producto={modalProd} onClose={() => setModalProd(null)} onConfirm={agregarAlCarrito} />}
+      {modalProd && (
+        <ModalPersonalizacionPedido
+          producto={modalProd}
+          productosMenu={safeProducts}
+          onClose={() => setModalProd(null)}
+          onConfirm={agregarAlCarrito}
+        />
+      )}
 
-      {/* PAGO MODAL */}
+      {/* MODALIDAD MODAL (primer paso al finalizar) */}
+      {paso === 4 && (
+        <ModalModalidad total={subtotal} onElegir={elegirModalidad} onVolver={() => setPaso(1)} />
+      )}
+
+      {/* FORMULARIO DELIVERY */}
+      {paso === 5 && pedido && (
+        <FormularioDelivery total={pedido.total} onEnviar={enviarDelivery} onVolver={() => setPaso(4)} />
+      )}
+
+      {/* PAGO MODAL (solo Comer en el local / Para llevar) — clases md: mantienen el tamaño original en tótem/PC */}
       {paso === 2 && (
-        <div className="fixed inset-0 z-[150] bg-black/90 flex flex-col items-center justify-center p-8">
-          <h2 className="text-5xl font-black text-white mb-12 text-center uppercase">¿Cómo querés pagar?</h2>
-          <div className="flex gap-8 max-w-4xl w-full">
+        <div className="fixed inset-0 z-[150] bg-black/90 flex flex-col items-center justify-center p-5 md:p-8 overflow-y-auto">
+          <h2 className="text-3xl md:text-5xl font-black text-white mb-8 md:mb-12 text-center uppercase">¿Cómo querés pagar?</h2>
+          <div className="flex flex-col sm:flex-row gap-4 md:gap-8 max-w-4xl w-full">
             <button
               onClick={() => procesarPago('Efectivo')}
-              className="flex-1 bg-[#2A363B] border-4 border-white/10 rounded-3xl p-12 flex flex-col items-center gap-6 active:border-[#E84A5F] transition-all"
+              className="flex-1 bg-[#2A363B] border-4 border-white/10 rounded-3xl p-6 md:p-12 flex flex-col items-center gap-3 md:gap-6 active:border-[#E84A5F] transition-all"
             >
-              <div className="w-32 h-32 bg-green-500/20 rounded-full flex items-center justify-center">
-                <span className="text-6xl">💵</span>
+              <div className="w-20 h-20 md:w-32 md:h-32 bg-green-500/20 rounded-full flex items-center justify-center">
+                <span className="text-4xl md:text-6xl">💵</span>
               </div>
-              <span className="text-4xl font-bold text-white">Efectivo</span>
-              <span className="text-xl text-white/50 text-center">Pagás en caja al retirar</span>
+              <span className="text-2xl md:text-4xl font-bold text-white">Efectivo</span>
+              <span className="text-base md:text-xl text-white/50 text-center">Pagás en caja al retirar</span>
             </button>
             <button
               onClick={() => procesarPago('Mercado Pago')}
-              className="flex-1 bg-[#2A363B] border-4 border-[#009EE3]/50 rounded-3xl p-12 flex flex-col items-center gap-6 active:border-[#009EE3] transition-all"
+              className="flex-1 bg-[#2A363B] border-4 border-[#009EE3]/50 rounded-3xl p-6 md:p-12 flex flex-col items-center gap-3 md:gap-6 active:border-[#009EE3] transition-all"
             >
-              <div className="w-32 h-32 bg-[#009EE3]/20 rounded-full flex items-center justify-center">
-                <span className="text-6xl">📱</span>
+              <div className="w-20 h-20 md:w-32 md:h-32 bg-[#009EE3]/20 rounded-full flex items-center justify-center">
+                <span className="text-4xl md:text-6xl">📱</span>
               </div>
-              <span className="text-4xl font-bold text-[#009EE3]">Mercado Pago</span>
-              <span className="text-xl text-white/50 text-center">Escaneás el QR en caja</span>
+              <span className="text-2xl md:text-4xl font-bold text-[#009EE3]">Mercado Pago</span>
+              <span className="text-base md:text-xl text-white/50 text-center">Escaneás el QR en caja</span>
             </button>
           </div>
           <button
-            onClick={() => setPaso(1)}
-            className="mt-12 px-12 py-5 rounded-2xl border-2 border-white/20 text-white text-2xl font-bold active:bg-white/10"
+            onClick={() => setPaso(4)}
+            className="mt-8 md:mt-12 px-8 md:px-12 py-4 md:py-5 rounded-2xl border-2 border-white/20 text-white text-lg md:text-2xl font-bold active:bg-white/10"
           >
-            Volver al pedido
+            Cambiar modalidad
           </button>
         </div>
       )}
 
-      {/* EXITO MODAL */}
-      {paso === 3 && (
-        <div className="fixed inset-0 z-[200] bg-[#E84A5F] flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300 no-print">
-          <div className="w-48 h-48 bg-white rounded-full flex items-center justify-center mb-12 shadow-2xl">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-24 h-24 text-[#E84A5F]">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-          </div>
-          <h2 className="text-6xl font-black text-white mb-6 uppercase">¡Pedido Confirmado!</h2>
-          <p className="text-3xl text-white/90 font-medium mb-12">Por favor recordá este número:</p>
-
-          <div className="bg-white px-16 py-8 rounded-3xl shadow-2xl mb-12">
-            <span className="text-3xl text-[#2A363B] font-bold uppercase tracking-widest block mb-2">Pedido</span>
-            <span className="text-8xl text-[#2A363B] font-black">#{numPedido}</span>
-          </div>
-
-          <p className="text-2xl text-white/80 max-w-2xl">
-            {metodoPago === 'Efectivo'
-              ? 'Acercate a la caja para abonar y retirar tu pedido.'
-              : 'Acercate a la caja para escanear el QR y retirar tu pedido.'}
-          </p>
-
-          {/* Autoclose hint */}
-          <div className="mt-16 text-white/50 text-xl flex items-center gap-2">
-            <svg className="animate-spin h-6 w-6 text-white/50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Volviendo al inicio...
-          </div>
-        </div>
-      )}
-
-      {/* TICKET DE IMPRESION OCULTO */}
-      {paso === 3 && (
-        <div className="print-only hidden font-mono text-black bg-white w-[80mm] p-4">
-          <div className="text-center mb-4">
-            <h1 className="text-3xl font-black mb-1">ROTISERIA ANTI</h1>
-            <p className="text-sm text-black">Fecha: {new Date().toLocaleDateString('es-AR')}</p>
-            <p className="text-sm text-black">Hora: {new Date().toLocaleTimeString('es-AR')}</p>
-          </div>
-
-          <div className="text-center mb-4 border-y-2 border-black border-dashed py-3">
-            <p className="text-sm font-bold">PEDIDO TÓTEM</p>
-            <h2 className="text-6xl font-black mt-2">#{numPedido}</h2>
-            <p className="text-sm font-bold mt-2 uppercase">Pago: {metodoPago}</p>
-          </div>
-
-          <div className="mb-4">
-            {carrito.map((i, idx) => (
-              <div key={idx} className="mb-2 text-sm font-bold">
-                <div className="flex justify-between">
-                  <span className="w-8">{i.cantidad}x</span>
-                  <span className="flex-1 px-1">{i.nombre}</span>
-                  <span className="w-16 text-right">${i.precio * i.cantidad}</span>
-                </div>
-                {i.aclaracion && <div className="pl-9 text-xs mt-1">* {i.aclaracion}</div>}
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t-2 border-black border-dashed pt-3 pb-8 flex justify-between font-black text-xl">
-            <span>TOTAL:</span>
-            <span>${subtotal}</span>
-          </div>
-
-          <div className="text-center mt-6 text-sm font-bold pb-12">
-            ¡GRACIAS POR TU COMPRA!
-            <br />
-            Retirá por mostrador
-          </div>
-        </div>
+      {/* TICKET DEL PEDIDO (confirmación + imprimir / descargar / WhatsApp) */}
+      {paso === 3 && pedido && (
+        <PantallaTicket pedido={pedido} onNuevoPedido={nuevoPedido} />
       )}
 
       {/* Hide scrollbars globally for this component */}

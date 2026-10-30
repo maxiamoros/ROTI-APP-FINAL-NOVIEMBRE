@@ -102,7 +102,7 @@ const ModalEditarProducto = ({ producto, categorias, onGuardar, onCancelar }) =>
                   type="number"
                   value={precio}
                   onChange={(e) => setPrecio(e.target.value)}
-                  placeholder="6500"
+                  placeholder="20000"
                   className="w-full bg-[#222] border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#d4a843]"
                   required
                 />
