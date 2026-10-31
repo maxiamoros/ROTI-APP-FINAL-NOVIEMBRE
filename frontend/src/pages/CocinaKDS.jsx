@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 import {
+  fetchPedidosKDS,
+  actualizarEstadoPedidoAPI,
   leerPedidosKDS,
-  guardarPedidosKDS,
-  cambiarEstadoPedido,
-  limpiarListos,
 } from '../data/pedidosKDS';
 
-// 
+//
 // HELPERS
-// 
+//
 const formatPeso = (n) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 
@@ -81,9 +81,9 @@ const beep = (freq = 880, duracion = 0.15, volumen = 0.3) => {
   } catch (_) {}
 };
 
-// 
+//
 // COMPONENTE: Timer en vivo
-// 
+//
 const Timer = ({ timestamp, estado, clases }) => {
   const [seg, setSeg] = useState(() => segundosDesde(timestamp));
 
@@ -100,19 +100,19 @@ const Timer = ({ timestamp, estado, clases }) => {
   );
 };
 
-// 
+//
 // COMPONENTE: Tarjeta de pedido
-// 
+//
 const ESTADO_CONFIG = {
-  nuevo:      { label: 'Nuevo',        icon: '', next: 'preparando', nextLabel: 'Iniciar preparación' },
-  preparando: { label: 'Preparando',  icon: '', next: 'listo',      nextLabel: 'Marcar como listo'   },
-  listo:      { label: 'Listo ',      icon: '', next: null,         nextLabel: null                  },
+  nuevo:      { label: 'Nuevo',       icon: '', next: 'preparando', nextLabel: 'Iniciar preparación' },
+  preparando: { label: 'Preparando', icon: '', next: 'listo',      nextLabel: 'Marcar como listo'   },
+  listo:      { label: 'Listo',      icon: '', next: null,         nextLabel: null                  },
 };
 
 const TarjetaPedido = ({ pedido, onCambiarEstado, onEliminar }) => {
-  const cfg     = ESTADO_CONFIG[pedido.estado];
+  const cfg      = ESTADO_CONFIG[pedido.estado] || ESTADO_CONFIG.nuevo;
   const segDesde = segundosDesde(pedido.timestamp);
-  const clases  = urgenciaClasses(segDesde, pedido.estado);
+  const clases   = urgenciaClasses(segDesde, pedido.estado);
 
   return (
     <div className={`flex flex-col bg-[#3A4A51] rounded-2xl border ${clases.border} ${clases.glow}
@@ -146,6 +146,9 @@ const TarjetaPedido = ({ pedido, onCambiarEstado, onEliminar }) => {
             </span>
           </div>
         ))}
+        {pedido.nota && (
+          <p className="text-xs text-amber-300/80 mt-2 leading-snug">{pedido.nota}</p>
+        )}
       </div>
 
       {/* Footer */}
@@ -183,67 +186,104 @@ const TarjetaPedido = ({ pedido, onCambiarEstado, onEliminar }) => {
   );
 };
 
-// 
+//
 // PÁGINA PRINCIPAL: Cocina KDS
-// 
+//
 const CocinaKDS = () => {
+  const { token } = useAuth();
   const [pedidos, setPedidos] = useState(() => leerPedidosKDS());
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
   const [sonidoActivo, setSonidoActivo] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('activos'); // 'activos' | 'todos' | 'listos'
   const [columnas, setColumnas] = useState(3); // 2 | 3 | 4
-  const prevCountRef = useState(() => leerPedidosKDS().filter(p => p.estado === 'nuevo').length);
+  const prevCountRef = useRef(0);
 
-  //  Polling de localStorage cada 2 segundos 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const nuevos = leerPedidosKDS();
+  const sincronizar = useCallback(async () => {
+    if (!token) return;
+    try {
+      const nuevos = await fetchPedidosKDS(token);
       setPedidos(nuevos);
+      setError(null);
 
-      // Detectar pedido nuevo y emitir beep
-      const countNuevos = nuevos.filter(p => p.estado === 'nuevo').length;
-      if (sonidoActivo && countNuevos > prevCountRef[0]) {
+      const countNuevos = nuevos.filter((p) => p.estado === 'nuevo').length;
+      if (sonidoActivo && countNuevos > prevCountRef.current) {
         beep(880, 0.1);
         setTimeout(() => beep(1100, 0.15), 120);
       }
-      prevCountRef[0] = countNuevos;
-    }, 1500);
-    return () => clearInterval(interval);
-  }, [sonidoActivo]);
-
-  //  Acciones 
-  const handleCambiarEstado = useCallback((id, nuevoEstado) => {
-    const actualizada = cambiarEstadoPedido(id, nuevoEstado);
-    setPedidos(actualizada);
-    if (nuevoEstado === 'listo' && sonidoActivo) {
-      beep(660, 0.08);
-      setTimeout(() => beep(880, 0.12), 100);
-      setTimeout(() => beep(1100, 0.2), 200);
+      prevCountRef.current = countNuevos;
+    } catch (e) {
+      console.error('[CocinaKDS]', e);
+      setError(e.message || 'Error al sincronizar');
+    } finally {
+      setCargando(false);
     }
-  }, [sonidoActivo]);
+  }, [token, sonidoActivo]);
 
-  const handleEliminar = useCallback((id) => {
-    const actualizada = leerPedidosKDS().filter(p => p.id !== id);
-    guardarPedidosKDS(actualizada);
-    setPedidos(actualizada);
-  }, []);
+  // Polling de la API cada 2 segundos
+  useEffect(() => {
+    sincronizar();
+    const interval = setInterval(sincronizar, 2000);
+    return () => clearInterval(interval);
+  }, [sincronizar]);
 
-  const handleLimpiarListos = useCallback(() => {
-    const actualizada = limpiarListos();
-    setPedidos(actualizada);
-  }, []);
+  const handleCambiarEstado = useCallback(async (id, nuevoEstado) => {
+    if (!token) return;
+    // Optimistic UI
+    setPedidos((prev) => prev.map((p) => (p.id === id ? { ...p, estado: nuevoEstado } : p)));
+    try {
+      await actualizarEstadoPedidoAPI(token, id, nuevoEstado);
+      if (nuevoEstado === 'listo' && sonidoActivo) {
+        beep(660, 0.08);
+        setTimeout(() => beep(880, 0.12), 100);
+        setTimeout(() => beep(1100, 0.2), 200);
+      }
+      await sincronizar();
+    } catch (e) {
+      console.error(e);
+      await sincronizar();
+      alert('No se pudo actualizar el estado del pedido');
+    }
+  }, [token, sonidoActivo, sincronizar]);
 
-  //  Pedidos filtrados 
+  const handleEliminar = useCallback(async (id) => {
+    if (!token) return;
+    setPedidos((prev) => prev.filter((p) => p.id !== id));
+    try {
+      await actualizarEstadoPedidoAPI(token, id, 'entregado');
+      await sincronizar();
+    } catch (e) {
+      console.error(e);
+      await sincronizar();
+      alert('No se pudo quitar el pedido');
+    }
+  }, [token, sincronizar]);
+
+  const handleLimpiarListos = useCallback(async () => {
+    if (!token) return;
+    const listos = pedidos.filter((p) => p.estado === 'listo');
+    setPedidos((prev) => prev.filter((p) => p.estado !== 'listo'));
+    try {
+      await Promise.all(listos.map((p) => actualizarEstadoPedidoAPI(token, p.id, 'entregado')));
+      await sincronizar();
+    } catch (e) {
+      console.error(e);
+      await sincronizar();
+    }
+  }, [token, pedidos, sincronizar]);
+
+  // Pedidos filtrados
   const pedidosFiltrados = pedidos.filter((p) => {
     if (filtroEstado === 'activos') return p.estado !== 'listo';
     if (filtroEstado === 'listos')  return p.estado === 'listo';
     return true;
   });
 
-  //  Stats 
+  // Stats
   const stats = {
-    nuevos:     pedidos.filter(p => p.estado === 'nuevo').length,
-    preparando: pedidos.filter(p => p.estado === 'preparando').length,
-    listos:     pedidos.filter(p => p.estado === 'listo').length,
+    nuevos:     pedidos.filter((p) => p.estado === 'nuevo').length,
+    preparando: pedidos.filter((p) => p.estado === 'preparando').length,
+    listos:     pedidos.filter((p) => p.estado === 'listo').length,
   };
 
   const gridCols = {
@@ -252,7 +292,7 @@ const CocinaKDS = () => {
     4: 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4',
   }[columnas];
 
-  //  Reloj en vivo 
+  // Reloj en vivo
   const [horaActual, setHoraActual] = useState(
     new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   );
@@ -263,11 +303,10 @@ const CocinaKDS = () => {
     return () => clearInterval(t);
   }, []);
 
-  // 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-6 lg:-mt-8 overflow-hidden bg-slate-950">
 
-      {/*  HEADER  */}
+      {/* HEADER */}
       <div className="bg-roti-dark border-b border-[#3A4A51] px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
 
@@ -303,8 +342,11 @@ const CocinaKDS = () => {
                    {stats.listos} listo{stats.listos !== 1 ? 's' : ''}
                 </span>
               )}
-              {pedidos.length === 0 && (
+              {!cargando && pedidos.length === 0 && (
                 <span className="text-xs text-slate-600">Sin pedidos activos</span>
+              )}
+              {error && (
+                <span className="text-xs text-red-400">{error}</span>
               )}
             </div>
           </div>
@@ -384,16 +426,20 @@ const CocinaKDS = () => {
         </div>
       </div>
 
-      {/*  CONTENIDO  */}
+      {/* CONTENIDO */}
       <div className="flex-1 overflow-y-auto p-4">
-        {pedidosFiltrados.length === 0 ? (
+        {cargando && pedidos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <p className="text-roti-cream/50 font-medium text-lg">Cargando cocina…</p>
+          </div>
+        ) : pedidosFiltrados.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             {pedidos.length === 0 ? (
               <>
                 <div className="text-6xl mb-4 opacity-30"></div>
                 <p className="text-roti-cream/50 font-medium text-lg">Sin pedidos en cocina</p>
-                <p className="text-slate-600 text-sm mt-2 max-w-xs">
-                  Cuando se confirme una venta en Caja, el pedido aparecerá aquí automáticamente.
+                <p className="text-slate-600 text-sm mt-2 max-w-sm">
+                  Los pedidos del tótem, delivery o Caja aparecen aquí automáticamente al confirmarse.
                 </p>
               </>
             ) : (
@@ -406,7 +452,7 @@ const CocinaKDS = () => {
                   onClick={() => setFiltroEstado('todos')}
                   className="mt-3 text-sm text-orange-400 hover:text-orange-300 transition-colors"
                 >
-                  Ver todos los pedidos 
+                  Ver todos los pedidos
                 </button>
               </>
             )}
@@ -425,7 +471,7 @@ const CocinaKDS = () => {
         )}
       </div>
 
-      {/*  LEYENDA  */}
+      {/* LEYENDA */}
       <div className="flex-shrink-0 border-t border-[#3A4A51] px-4 py-2 bg-roti-dark/80
                       flex items-center gap-6 text-xs text-slate-600">
         <span className="flex items-center gap-1.5">

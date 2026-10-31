@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_123';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET no está configurado');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || 'rotiapp_dev_secret_solo_local';
 
 const verifyToken = (req, res, next) => {
   const token = req.headers['authorization'];
@@ -22,6 +26,7 @@ const requireAdmin = (req, res, next) => {
 };
 
 module.exports = {
+  JWT_SECRET,
   verifyToken,
   requireAdmin
 };

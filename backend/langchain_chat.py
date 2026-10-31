@@ -109,7 +109,7 @@ def fetch_store_context():
 def run_chat_with_langchain(user_message, history=None):
     """Ejecuta la consulta usando LangChain y Gemini API con el contexto de la rotisería."""
     api_key = os.getenv("GEMINI_API_KEY", "").strip().strip('"').strip("'")
-    model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
     
     web_context = fetch_store_context()
 
@@ -229,12 +229,13 @@ def main():
         user_input = " ".join(sys.argv[1:])
     else:
         # Leer desde STDIN (JSON enviado por Node.js)
+        stdin_data = ""
         try:
             stdin_data = sys.stdin.read()
             if stdin_data:
                 parsed = json.loads(stdin_data)
                 user_input = parsed.get("mensaje", "")
-                history = parsed.get("historial", [])
+                history = parsed.get("historial") or []
         except Exception:
             user_input = stdin_data.strip()
 

@@ -74,7 +74,7 @@ const ModalInsumo = ({ insumo, onGuardar, onCancelar }) => {
     onGuardar({ ...form, stock: Number(form.stock), stockMinimo: Number(form.stockMinimo) });
   };
 
-  const Field = ({ label, name, type = 'text', placeholder }) => (
+  const campo = ({ label, name, type = 'text', placeholder }) => (
     <div>
       <label className="block text-xs font-semibold text-roti-cream/60 uppercase tracking-wider mb-1.5">{label}</label>
       <div className="relative">
@@ -111,11 +111,11 @@ const ModalInsumo = ({ insumo, onGuardar, onCancelar }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <Field label="Nombre del insumo *" name="nombre" placeholder="Ej: Queso Muzzarella" />
+          {campo({ label: 'Nombre del insumo *', name: 'nombre', placeholder: 'Ej: Queso Muzzarella' })}
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Stock actual (Unidades/Gr/Ml)" name="stock" type="number" placeholder="0" />
-            <Field label="Stock mínimo" name="stockMinimo" type="number" placeholder="0" />
+            {campo({ label: 'Stock actual (Unidades/Gr/Ml)', name: 'stock', type: 'number', placeholder: '0' })}
+            {campo({ label: 'Stock mínimo', name: 'stockMinimo', type: 'number', placeholder: '0' })}
           </div>
 
           <div className="flex gap-3 pt-2">

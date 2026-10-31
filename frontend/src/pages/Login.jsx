@@ -24,31 +24,42 @@ const AdminLogin = () => {
     }
   }, [user, navigate]);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     const cleanUser = username.trim();
 
-    // Validar únicamente: Usuario "Choco" y Contraseña "river91218"
-    if (cleanUser === 'Choco' && password === 'river91218') {
-      const userData = { id: 1, username: 'Choco', rol: 'ADMIN' };
-      const authToken = 'admin_token_choco_2026';
-      
-      localStorage.setItem('isAuthenticated', 'true');
-      login(userData, authToken);
-      navigate('/admin', { replace: true });
-      setLoading(false);
-      return;
-    }
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, password }),
+      });
 
-    // Si las credenciales no coinciden: NO guardar nada en localStorage
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    setError('Usuario o contraseña incorrectos');
-    setLoading(false);
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setError(data.error || 'Usuario o contraseña incorrectos');
+        return;
+      }
+
+      localStorage.setItem('isAuthenticated', 'true');
+      login(data.user, data.token);
+
+      if (data.user?.rol === 'COCINERO') navigate('/cocina', { replace: true });
+      else if (data.user?.rol === 'CAJERO') navigate('/caja', { replace: true });
+      else if (data.user?.rol === 'TOTEM' || data.user?.rol === 'CLIENTE') navigate('/cliente', { replace: true });
+      else navigate('/admin', { replace: true });
+    } catch {
+      setError('No se pudo conectar con el servidor');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

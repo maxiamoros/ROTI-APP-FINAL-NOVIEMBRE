@@ -1,5 +1,12 @@
 const prisma = require('../prisma');
 
+// stock y stockMinimo son Int en la base: el frontend puede mandar strings o decimales
+const aEntero = (valor) => {
+  if (valor === undefined || valor === null || valor === '') return undefined;
+  const n = Number(valor);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : NaN;
+};
+
 const getInsumos = async (req, res) => {
   try {
     const insumos = await prisma.insumo.findMany();
@@ -14,11 +21,17 @@ const createInsumo = async (req, res) => {
     const { nombre, stock, stockMinimo } = req.body;
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
 
+    const stockInt = aEntero(stock);
+    const stockMinimoInt = aEntero(stockMinimo);
+    if (Number.isNaN(stockInt) || Number.isNaN(stockMinimoInt)) {
+      return res.status(400).json({ error: 'Stock inválido' });
+    }
+
     const nuevo = await prisma.insumo.create({
       data: {
         nombre,
-        stock: stock || 0,
-        stockMinimo: stockMinimo || 0
+        stock: stockInt ?? 0,
+        stockMinimo: stockMinimoInt ?? 0
       }
     });
     res.status(201).json(nuevo);
@@ -31,12 +44,20 @@ const updateInsumo = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, stock, stockMinimo } = req.body;
+
+    const stockInt = aEntero(stock);
+    const stockMinimoInt = aEntero(stockMinimo);
+    if (Number.isNaN(stockInt) || Number.isNaN(stockMinimoInt)) {
+      return res.status(400).json({ error: 'Stock inválido' });
+    }
+
     const actualizado = await prisma.insumo.update({
       where: { id: parseInt(id) },
-      data: { nombre, stock, stockMinimo }
+      data: { nombre, stock: stockInt, stockMinimo: stockMinimoInt }
     });
     res.json(actualizado);
   } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Insumo no encontrado' });
     res.status(500).json({ error: 'Error al actualizar insumo' });
   }
 };

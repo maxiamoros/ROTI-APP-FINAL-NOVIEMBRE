@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const configController = require('../controllers/config.controller');
+const { verifyToken, requireAdmin } = require('../middlewares/auth.middleware');
 
-// Optional: You can add auth middleware here if you only want GERENTE/ADMIN to update
 router.get('/', configController.getConfig);
-router.put('/', configController.updateConfig);
-router.post('/batch', configController.batchUpdateConfig);
+router.put('/', verifyToken, requireAdmin, configController.updateConfig);
+router.post('/batch', verifyToken, requireAdmin, configController.batchUpdateConfig);
 
 module.exports = router;
